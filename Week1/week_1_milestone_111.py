@@ -45,6 +45,6 @@ if yes_or_no == 'yes':
                 
             print('invalid phone number. Please try again.')
 
-    else:
+else:
         
         print('No problem! Let us know if you changed your mind!')
