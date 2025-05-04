@@ -20,6 +20,7 @@ current_time = datetime.datetime.now()
 formatted_time = current_time.strftime("%m/%d/%Y %I:%M %p")
 
 with open("volumes.txt", "a") as file:
+    
     file.write(f"{formatted_time} , {w}, {a}, {d}, {v:.2f}\n")
 
 yes_or_no = input('would you like to buy tires in the size you gave us for your vehicle? yes or no?').strip().lower()
@@ -37,6 +38,7 @@ if yes_or_no == 'yes':
             print("Phone number accepted:", cleaned_phone)
 
             with open('volumes.txt', 'a') as file:
+                
                 file.write(f"Phone number: {cleaned_phone}\n")
 
                 break
@@ -48,3 +50,9 @@ if yes_or_no == 'yes':
 else:
         
         print('No problem! Let us know if you changed your mind!')
+
+        print("\nCurrent contents of volumes.txt:")
+
+with open("volumes.txt", "r") as file:
+    
+    print(file.read())
