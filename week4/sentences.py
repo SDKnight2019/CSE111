@@ -71,6 +71,8 @@ def make_sentence(quantity, tense):
     sentence = sentence.capitalize()
     return sentence
 
+#strech goals... I am adding this to exceed the requirments of the class.
+
 def get_adjective():
     return random.choice(["fuzzy", "happy", "sleepy", "grumpy", "giant", "tiny", "brave", "playful", "noisy", "quiet"])
 
