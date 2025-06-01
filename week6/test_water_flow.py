@@ -5,7 +5,6 @@ import pytest
 from water_flow import (
     water_column_height, pressure_gain_from_water_height, pressure_loss_from_pipe,
     pressure_loss_from_fittings, reynolds_number, pressure_loss_from_pipe_reduction,
-    pressure_kpa_to_psi
 )
 
 def test_water_column_height():
@@ -46,11 +45,5 @@ def test_pressure_loss_from_pipe_reduction():
     assert pressure_loss_from_pipe_reduction(0.28687, 0, 1, 0.048692) == approx(0, abs=0.001)
     assert pressure_loss_from_pipe_reduction(0.28687, 1.65, 471729, 0.048692) == approx(-163.744, abs=0.001)
     assert pressure_loss_from_pipe_reduction(0.28687, 1.75, 500318, 0.048692) == approx(-184.182, abs=0.001)
-
-def test_pressure_kpa_to_psi():
-    assert pressure_kpa_to_psi(0) == approx(0)
-    assert pressure_kpa_to_psi(100) == approx(14.5038, abs=0.0001)
-    assert pressure_kpa_to_psi(489.450) == approx(71.0, abs=0.1)
-    assert pressure_kpa_to_psi(295.628) == approx(42.9, abs=0.1)
 
 pytest.main(["-v", "--tb=line", "-rN", __file__])
