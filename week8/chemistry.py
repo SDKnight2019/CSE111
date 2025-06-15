@@ -1,8 +1,10 @@
 from formula import parse_formula
 
+# Indexes for inner lists in the periodic table
 NAME_INDEX = 0
 ATOMIC_MASS_INDEX = 1
 
+# Indexes for inner lists in a symbol_quantity_list
 SYMBOL_INDEX = 0
 QUANTITY_INDEX = 1
 
@@ -108,11 +110,37 @@ def make_periodic_table():
 def compute_molar_mass(symbol_quantity_list, periodic_table_dict):
     """Compute and return the total molar mass of all the
     elements listed in symbol_quantity_list.
+
+    Parameters
+        symbol_quantity_list is a compound list returned
+            from the parse_formula function. Each small
+            list in symbol_quantity_list has this form:
+            ["symbol", quantity].
+        periodic_table_dict is the compound dictionary
+            returned from make_periodic_table.
+    Return: the total molar mass of all the elements in
+        symbol_quantity_list.
+
+    For example, if symbol_quantity_list is [["H", 2], ["O", 1]],
+    this function will calculate and return
+    atomic_mass("H") * 2 + atomic_mass("O") * 1
+    1.00794 * 2 + 15.9994 * 1
+    18.01528
     """
+    # Do the following for each inner list in the
+    # compound symbol_quantity_list:
+        # Separate the inner list into symbol and quantity.
+        # Get the atomic mass for the symbol from the dictionary.
+        # Multiply the atomic mass by the quantity.
+        # Add the product into the total molar mass.
+
     total_mass = 0
-    for symbol, quantity in symbol_quantity_list:
+    for symbol_quantity in symbol_quantity_list:
+        symbol = symbol_quantity[SYMBOL_INDEX]
+        quantity = symbol_quantity[QUANTITY_INDEX]
         atomic_mass = periodic_table_dict[symbol][ATOMIC_MASS_INDEX]
         total_mass += atomic_mass * quantity
+    # Return the total molar mass.
     return total_mass
 
 def get_formula_name(formula, known_molecules_dict):
