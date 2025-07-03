@@ -1,0 +1,55 @@
+CSE 111 Proposal for a Student Chosen Program
+
+    (This is a proposal. All proposals are written with our best
+    knowledge at the beginning of a project. As we progress from the
+    beginning to the end of a project, we gain more knowledge, and we
+    change some of our proposed ideas. This is part of completing any
+    project and is fine.  However, we still must write a proposal so
+    that our teachers or supervisors know what we intend to do. Please
+    answer each of the following questions to the best of your
+    knowledge.)
+
+1. What is the title of your program?
+
+The Fishing Planer
+
+2. What real-world problem will your program address or help to solve?
+
+I often struggle, like most anglers, on deciding what fishing spot to go to,
+ and what tackle and gear to bring to whatever fishing spot I decide to go to.
+ I also need to consider the gear I should bring with me based on the fishing conditions.
+ The fishing Planner will recommend the best fishing spots, tackle, and style of fishing
+  based upon the target species and the current fishing conditions.
+
+3. What will you learn from developing this program?
+
+From developing The Fishing Planner, I will learn how to:
+- Design and organize a Python program using multiple reusable functions
+- Work with conditional logic to score and rank fishing locations
+- Manage real-world data like weather conditions and target species preferences
+- Use modules like `math`, `datetime`, `random`, and possibly `csv` or `requests`
+- Test core logic using pytest and ensure functions behave correctly with various inputs
+- Apply my personal fishing knowledge to develop useful decision-making rules in code
+
+4. What Python modules will your program use?
+
+math for scoring and evaluating fishing conditions numerically.
+random to simulate weather or fishing data when real data isn't available. (for testing purposes.)
+datetime to consider time-based factors like time of day or season.
+csv to read and store fishing spot data, gear preferences, or historical success patterns.
+pytest to write and run test functions that verify program logic.
+requests to retrieve live weather data from an API like OpenWeatherMap. (if I have enough time, which i should.)
+
+
+5. Will you separate your Python program into functions that each
+perform a single task?
+
+Yes. I will separate my program into multiple functions that each perform one specific task.
+Most of these functions will take parameters and return results instead of getting user input or printing directly. 
+This will make the functions easier to reuse and test. 
+I will reserve user input and output for the `main()` function or a separate interface layer, while the core logic will be handled by clean, testable functions.
+
+6. Will you write test functions to test at least two of your program
+functions?
+
+Yes. I will write test functions using pytest to verify that my core logic works correctly.
