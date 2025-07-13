@@ -5,19 +5,28 @@ import csv
 import requests  # Now using live weather data
 
 def load_fishing_spots(filename):
-    """Load fishing spots from a CSV file, using name/location/lat/lon from the water bodies file."""
+    """Load fishing spots from a CSV file, using name/location/lat/lon/species from the water bodies file."""
     spots = []
     try:
         with open(filename, newline='') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
+                # Handle missing or empty lat/lon
+                try:
+                    lat = float(row["lat"]) if row["lat"] else None
+                    lon = float(row["lon"]) if row["lon"] else None
+                except Exception:
+                    lat, lon = None, None
+                # Handle species column if present
+                species = []
+                if "species" in row and row["species"]:
+                    species = [s.strip().lower() for s in row["species"].split(';')]
                 spot = {
                     "name": row["name"],
                     "location": row["location_desc"],
-                    "latitude": float(row["lat"]),
-                    "longitude": float(row["lon"]),
-                    # No species info in this file, so leave as empty list or add logic if needed
-                    "species": []
+                    "latitude": lat,
+                    "longitude": lon,
+                    "species": species
                 }
                 spots.append(spot)
     except FileNotFoundError:
@@ -94,29 +103,39 @@ def recommend_gear(spot, weather, target_species):
 
 def main():
     print("Welcome to The Fishing Planner!")
-    spots = load_fishing_spots("/home/sdknight2019/Public/Developer/CSE111/Final_Project/waters_with_coords_filtered.csv")
+    spots = load_fishing_spots("/home/sdknight2019/Public/Developer/CSE111/Final_Project/waters_with_coords.csv")
     if not spots:
         print("No fishing spots available. Exiting.")
         return
     target_species = input("Enter your target species (e.g., bass, trout): ").strip().lower()
-    show_all = input("Show scores and recommended gear for all locations? (y/n): ").strip().lower() == 'y'
-    # Use live weather for all locations if requested
-    if show_all:
-        print("\nScores and recommended gear for all locations (using live weather):")
+    show_top = input("Show the top 5 spots? (y/n): ").strip().lower() == 'y'
+    # Show top 5 spots if requested
+    if show_top:
+        scored_spots = []
         for spot in spots:
+            if spot['latitude'] is None or spot['longitude'] is None:
+                continue
             weather = get_weather_conditions(spot['latitude'], spot['longitude'])
             if weather:
                 score = score_conditions(spot, weather, target_species)
-                gear = recommend_gear(spot, weather, target_species)
-                print(f"{spot['name']}: Score {score} | Gear: {', '.join(gear)} | Weather: {weather}")
-            else:
-                print(f"{spot['name']}: Live weather unavailable. Skipping.")
-        print()
+                scored_spots.append((score, spot, weather))
+        scored_spots.sort(reverse=True, key=lambda x: x[0])
+        print("\nTop 5 recommended spots:")
+        for i, (score, spot, weather) in enumerate(scored_spots[:5], 1):
+            gear = recommend_gear(spot, weather, target_species)
+            print(f"{i}. {spot['name']} (Score: {score}) | Location: {spot['location']} | Lat: {spot['latitude']} | Lon: {spot['longitude']}")
+            print(f"   Weather: {weather}")
+            print(f"   Recommended gear: {', '.join(gear)}\n")
+        if not scored_spots:
+            print("No suitable fishing spots found for your criteria with live weather.")
+        return
     # Recommend spot based on live weather for all spots
     best_spot = None
     best_score = -math.inf
     best_weather = None
     for spot in spots:
+        if spot['latitude'] is None or spot['longitude'] is None:
+            continue
         weather = get_weather_conditions(spot['latitude'], spot['longitude'])
         if weather:
             score = score_conditions(spot, weather, target_species)
