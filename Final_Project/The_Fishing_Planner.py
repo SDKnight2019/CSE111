@@ -1,9 +1,8 @@
 import math
 import datetime
 import csv
-import requests  # For live weather data
+import requests
 
-# --- Data Loading ---
 def load_fishing_spots(filename):
     """Load fishing spots from a CSV file."""
     spots = []
@@ -29,7 +28,6 @@ def load_fishing_spots(filename):
         print(f"Warning: {filename} not found. No spots loaded.")
     return spots
 
-# --- Weather API ---
 def get_nws_weather(lat, lon, day_offset=0):
     """Fetch weather data from the National Weather Service API for given coordinates and day offset (0-6)."""
     headers = {"User-Agent": "FishingPlanner/1.0 (your_email@example.com)"}
@@ -60,7 +58,6 @@ def get_weather_conditions(lat=None, lon=None, day_offset=0):
     print("Live weather unavailable for this location. Skipping.")
     return None
 
-# --- Scoring and Recommendation ---
 def score_conditions(spot, weather, target_species):
     """Score a fishing spot based on weather and target species (partial match allowed)."""
     score = 0
@@ -97,16 +94,15 @@ def average_spot_score(spot, target_species, start_day, trip_length):
 def get_weekday_offset(target_weekday):
     """Return the number of days from today to the next target_weekday (0=Monday, 6=Sunday)."""
     today = datetime.datetime.now().date()
-    today_weekday = today.weekday()  # 0=Monday, 6=Sunday
+    today_weekday = today.weekday() 
     days_of_week = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
     try:
         target_index = days_of_week.index(target_weekday.lower())
     except ValueError:
-        return 0  # Default to today if invalid
+        return 0 
     offset = (target_index - today_weekday) % 7
     return offset
 
-# --- Main Program ---
 def main():
     print("Welcome to The Fishing Planner!")
     spots = load_fishing_spots("/home/sdknight2019/Public/Developer/CSE111/Final_Project/waters_with_coords.csv")
@@ -146,7 +142,7 @@ def main():
         if not scored_spots:
             print("No suitable fishing spots found for your criteria with live weather.")
         return
-    # Recommend spot based on average score for all spots
+
     best_spot = None
     best_avg_score = -math.inf
     for spot in spots:

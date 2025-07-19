@@ -7,14 +7,12 @@ from The_Fishing_Planner import (
     recommend_gear
 )
 
-# Mock weather for testing
 mock_weather = {
     "temperature": 70,
     "wind": "5 mph",
     "cloud_cover": "partly cloudy"
 }
 
-# Mock spot
 mock_spot = {
     "name": "Test Lake",
     "location": "Test County",
@@ -37,11 +35,10 @@ Test Lake,Test County,44.0,-111.0,Rainbow Trout;Bass
 
 def test_score_conditions():
     score = score_conditions(mock_spot, mock_weather, "trout")
-    assert score >= 10  # Should match species and get weather bonus
+    assert score >= 10  
     print("test_score_conditions passed.")
 
 def test_average_spot_score():
-    # Patch get_weather_conditions to always return mock_weather
     import The_Fishing_Planner
     The_Fishing_Planner.get_weather_conditions = lambda lat, lon, day_offset=0: mock_weather
     avg = average_spot_score(mock_spot, "trout", 0, 3)
