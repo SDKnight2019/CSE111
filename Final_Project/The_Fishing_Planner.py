@@ -22,37 +22,64 @@ def load_user_gear(filename):
     return gear_by_type, gear_names
 def prompt_bait_and_gear_method(selected_methods):
     """Prompt user for bait preference and (if needed) gear method. Returns (bait_preference, gear_method)."""
-    print("\nDo you prefer moving or still bait?")
-    bait_types = ["moving", "still"]
-    for idx, bait in enumerate(bait_types, 1):
-        print(f"  {idx}. {bait.title()} Bait")
     while True:
-        try:
-            bait_choice = int(input(f"Enter the number for your bait preference (1-{len(bait_types)}): ").strip())
-            if 1 <= bait_choice <= len(bait_types):
-                bait_preference = bait_types[bait_choice - 1]
-                break
-            else:
-                print(f"Please enter a number between 1 and {len(bait_types)}.")
-        except Exception:
-            print("Invalid input. Please enter a valid number.")
+        print("\nDo you have a two-pole permit? (y/n): ", end='')
+        two_pole_input = input().strip().lower()
+        if two_pole_input in ('y', 'n'):
+            two_pole = two_pole_input == 'y'
+            break
+        else:
+            print("Please enter 'y' for yes or 'n' for no.")
+    bait_types = ["moving", "still"]
+    bait_preference = []
+    if two_pole:
+        print("\nYou have a two-pole permit. Please select bait preference for each pole.")
+        for pole_num in range(1, 3):
+            print(f"\nPole {pole_num}:")
+            for idx, bait in enumerate(bait_types, 1):
+                print(f"  {idx}. {bait.title()} Bait")
+            while True:
+                try:
+                    bait_choice = int(input(f"Enter the number for your bait preference for pole {pole_num} (1-{len(bait_types)}): ").strip())
+                    if 1 <= bait_choice <= len(bait_types):
+                        bait_preference.append(bait_types[bait_choice - 1])
+                        break
+                    else:
+                        print(f"Please enter a number between 1 and {len(bait_types)}.")
+                except Exception:
+                    print("Invalid input. Please enter a valid number.")
+    else:
+        print("\nDo you prefer moving or still bait?")
+        for idx, bait in enumerate(bait_types, 1):
+            print(f"  {idx}. {bait.title()} Bait")
+        while True:
+            try:
+                bait_choice = int(input(f"Enter the number for your bait preference (1-{len(bait_types)}): ").strip())
+                if 1 <= bait_choice <= len(bait_types):
+                    bait_preference = [bait_types[bait_choice - 1]]
+                    break
+                else:
+                    print(f"Please enter a number between 1 and {len(bait_types)}.")
+            except Exception:
+                print("Invalid input. Please enter a valid number.")
     if len(selected_methods) > 1:
-        print("\nYou selected multiple fishing methods. Which one do you want gear recommendations for?")
+        print("\nYou selected multiple fishing methods. Which one(s) do you want gear recommendations for?")
         for idx, method in enumerate(selected_methods, 1):
             print(f"  {idx}. {method.title()}")
         while True:
             try:
-                gear_method_choice = int(input(f"Enter the number for your preferred method for gear (1-{len(selected_methods)}): ").strip())
-                if 1 <= gear_method_choice <= len(selected_methods):
-                    gear_method = selected_methods[gear_method_choice - 1]
+                gear_method_choices = input(f"Enter the number(s) for your preferred method(s) for gear (comma separated, e.g. 1,2): ").strip()
+                selected_indices = [int(x) for x in gear_method_choices.split(',') if x.strip().isdigit() and 1 <= int(x.strip()) <= len(selected_methods)]
+                if selected_indices:
+                    gear_methods = [selected_methods[i-1] for i in selected_indices]
                     break
                 else:
-                    print(f"Please enter a number between 1 and {len(selected_methods)}.")
+                    print(f"Please enter at least one valid number between 1 and {len(selected_methods)}.")
             except Exception:
-                print("Invalid input. Please enter a valid number.")
+                print("Invalid input. Please enter valid numbers separated by commas.")
     else:
-        gear_method = selected_methods[0]
-    return bait_preference, gear_method
+        gear_methods = [selected_methods[0]]
+    return bait_preference, gear_methods, two_pole
 
 def load_fishing_spots(filename):
     """Load fishing spots from a CSV file."""
@@ -112,8 +139,12 @@ def get_weather_conditions(lat=None, lon=None, day_offset=0):
 def score_conditions(spot, weather, target_species):
     """Score a fishing spot based on weather, target species, and fishing method, out of 110 points."""
     score = 0
-    if any(target_species in s for s in spot["species"]):
-        score += 40
+    if isinstance(target_species, list):
+        if any(any(ts in s for ts in target_species) for s in spot["species"]):
+            score += 40
+    else:
+        if any(target_species in s for s in spot["species"]):
+            score += 40
 
     temp = weather["temperature"]
     if 65 <= temp <= 70:
@@ -179,9 +210,17 @@ def recommend_gear(spot, weather, target_species, fishing_method=None, bait_pref
     else:
         water_type = "unknown"
 
+    rods_used = recommend_gear.rods_used if hasattr(recommend_gear, 'rods_used') else set()
     gear = []
+
+    bait_type_map = {
+        'spinner': 'moving', 'spinners': 'moving', 'spoon': 'moving', 'spoons': 'moving', 'crankbait': 'moving', 'chatterbait': 'moving', 'fly': 'moving', 'rooster tail': 'moving', 'double spinner': 'moving',
+        'hook': 'still', 'hooks': 'still', 'circle hooks': 'still', 'soft plastic': 'still', 'soft plastics': 'still', 'slip sinker rig': 'still', 'sinker weights': 'still', 'drifting rig': 'still',
+        'rain jacket': 'accessory', 'heavier line (12-15lb)': 'accessory', '8-10lb line': 'accessory', 'waders': 'accessory', 'wading boots': 'accessory', 'float tube': 'accessory', 'fins': 'accessory', 'life jacket': 'accessory', 'shore rod holder': 'accessory', 'longer rod (7-9ft)': 'accessory', 'steel leader': 'accessory', 'slow retrieve': 'accessory'
+    }
     if fishing_method == "shore":
-        gear.append("shore rod holder")
+        if bait_preference != "moving":
+            gear.append("shore rod holder")
         if water_type == "still":
             gear.append("longer rod (7-9ft)")
     elif fishing_method == "wading":
@@ -197,113 +236,167 @@ def recommend_gear(spot, weather, target_species, fishing_method=None, bait_pref
 
     def add_gear(item):
         key = item.lower()
-        if key in user_gear["lure"]:
-            gear.append(user_gear["lure"][key])
-        elif key in user_gear["accessory"]:
-            gear.append(user_gear["accessory"][key])
-        elif key in user_gear_names:
-            gear.append(item)
+        keys_to_try = [key]
+        if key.endswith('s'):
+            keys_to_try.append(key[:-1])
         else:
+            keys_to_try.append(key + 's')
+        found = False
+        for k in keys_to_try:
+            if k in user_gear["lure"]:
+                gear.append(user_gear["lure"][k])
+                found = True
+                break
+            elif k in user_gear["accessory"]:
+                gear.append(user_gear["accessory"][k])
+                found = True
+                break
+            elif k in user_gear_names:
+                gear.append(k)
+                found = True
+                break
+        if not found:
             print(f"[Warning] You do not have '{item}' in your gear list.")
 
     def add_rod(rod_type):
         key = rod_type.lower()
-        if key in user_gear["rod"]:
-            gear.append(user_gear["rod"][key])
-        elif key in user_gear_names:
+        rod_name = user_gear["rod"].get(key, rod_type)
+        if key in user_gear["rod"] and rod_name not in rods_used:
+            gear.append(rod_name)
+            rods_used.add(rod_name)
+        elif key in user_gear_names and rod_type not in rods_used:
             gear.append(rod_type)
+            rods_used.add(rod_type)
+        elif key in user_gear["rod"] and rod_name in rods_used:
+            pass
+        elif key in user_gear_names and rod_type in rods_used:
+            pass
         else:
             print(f"[Warning] You do not have '{rod_type}' rod in your gear list.")
 
-    if "bass" in target_species:
+    ts_list = target_species if isinstance(target_species, list) else [target_species]
+    group = None
+    for g in ["bass", "trout", "walleye", "catfish", "pike"]:
+        if any(g in ts for ts in ts_list):
+            group = g
+            break
+    lure_candidates = []
+    def add_lure_candidate(item):
+        key = item.lower()
+        keys_to_try = [key]
+        if key.endswith('s'):
+            keys_to_try.append(key[:-1])
+        else:
+            keys_to_try.append(key + 's')
+        # Determine bait type
+        bait_type = bait_type_map.get(key, None)
+        # Only add if bait_type matches bait_preference, or is accessory
+        if bait_preference in ('moving', 'still'):
+            if bait_type == bait_preference or bait_type == 'accessory':
+                for k in keys_to_try:
+                    if k in user_gear["lure"] and user_gear["lure"][k] not in lure_candidates:
+                        lure_candidates.append(user_gear["lure"][k])
+                    elif k in user_gear["accessory"] and user_gear["accessory"][k] not in lure_candidates:
+                        lure_candidates.append(user_gear["accessory"][k])
+                    elif k in user_gear_names and k not in lure_candidates:
+                        lure_candidates.append(k)
+        else:
+            # If bait_preference is not set, allow all
+            for k in keys_to_try:
+                if k in user_gear["lure"] and user_gear["lure"][k] not in lure_candidates:
+                    lure_candidates.append(user_gear["lure"][k])
+                elif k in user_gear["accessory"] and user_gear["accessory"][k] not in lure_candidates:
+                    lure_candidates.append(user_gear["accessory"][k])
+                elif k in user_gear_names and k not in lure_candidates:
+                    lure_candidates.append(k)
+
+    if group == "bass":
         if water_type == "still":
             add_rod("medium-heavy")
             if temp >= 70:
-                add_gear("chatterbait")
+                add_lure_candidate("chatterbait")
             else:
-                add_gear("spinner")
+                add_lure_candidate("spinner")
         elif water_type == "moving":
             add_rod("medium")
-            add_gear("soft plastic")
+            add_lure_candidate("soft plastic")
         else:
             add_rod("medium")
-            add_gear("spinner")
+            add_lure_candidate("spinner")
         if wind_val > 10:
-            gear.append("heavier line (12-15lb)")
+            add_lure_candidate("heavier line (12-15lb)")
         else:
-            gear.append("8-10lb line")
+            add_lure_candidate("8-10lb line")
         if bait_preference == "moving":
-            add_gear("crankbait")
+            add_lure_candidate("crankbait")
         elif bait_preference == "still":
-            add_gear("soft plastic")
-    elif "trout" in target_species:
+            add_lure_candidate("soft plastic")
+    elif group == "trout":
         if water_type == "moving":
             add_rod("fly")
-            if "cloud" in cloud:
-                add_gear("fly")
-            else:
-                add_gear("fly")
+            add_lure_candidate("fly")
         elif water_type == "still":
             add_rod("ultralight")
             if temp < 60:
-                add_gear("hook")
+                add_lure_candidate("hook")
             else:
-                add_gear("spoon")
+                add_lure_candidate("spoon")
         else:
             add_rod("light")
-            add_gear("spinner")
+            add_lure_candidate("spinner")
         if wind_val > 10:
-            add_gear("spoon")
+            add_lure_candidate("spoon")
         if bait_preference == "moving":
-            add_gear("spinner")
+            add_lure_candidate("spinner")
         elif bait_preference == "still":
-            add_gear("hook")
-    elif "walleye" in target_species:
+            add_lure_candidate("hook")
+    elif group == "walleye":
         add_rod("medium")
         if water_type == "still":
-            add_gear("soft plastic")
+            add_lure_candidate("soft plastic")
         else:
-            add_gear("crankbait")
+            add_lure_candidate("crankbait")
         if temp < 55:
-            gear.append("slow retrieve")
+            add_lure_candidate("slow retrieve")
         if bait_preference == "moving":
-            add_gear("crankbait")
+            add_lure_candidate("crankbait")
         elif bait_preference == "still":
-            add_gear("hook")
-    elif "catfish" in target_species:
+            add_lure_candidate("hook")
+    elif group == "catfish":
         add_rod("medium-heavy")
-        gear.append("circle hooks")
-        add_gear("hook")
+        add_lure_candidate("circle hooks")
+        add_lure_candidate("hook")
         if water_type == "moving":
-            gear.append("sinker weights")
+            add_lure_candidate("sinker weights")
         if bait_preference == "moving":
-            gear.append("drifting rig")
+            add_lure_candidate("drifting rig")
         elif bait_preference == "still":
-            gear.append("slip sinker rig")
-    elif "pike" in target_species:
+            add_lure_candidate("slip sinker rig")
+    elif group == "pike":
         add_rod("medium-heavy")
-        gear.append("steel leader")
-        add_gear("spoon")
+        add_lure_candidate("steel leader")
+        add_lure_candidate("spoon")
         if bait_preference == "moving":
-            add_gear("spinner")
+            add_lure_candidate("spinner")
         elif bait_preference == "still":
-            add_gear("soft plastic")
+            add_lure_candidate("soft plastic")
     else:
         if water_type == "still":
             add_rod("medium")
-            add_gear("hook")
+            add_lure_candidate("hook")
         elif water_type == "moving":
             add_rod("light")
-            add_gear("spinner")
+            add_lure_candidate("spinner")
         else:
             add_rod("medium")
-            add_gear("hook")
+            add_lure_candidate("hook")
         if bait_preference == "moving":
-            add_gear("spinner")
+            add_lure_candidate("spinner")
         elif bait_preference == "still":
-            add_gear("hook")
+            add_lure_candidate("hook")
     if "rain" in cloud or "showers" in cloud:
-        gear.append("rain jacket")
+        add_lure_candidate("rain jacket")
+    gear.extend(lure_candidates[:3])
     return gear
 
 def average_spot_score(spot, target_species, start_day, trip_length):
@@ -377,66 +470,131 @@ def main():
         else:
             spot['fishing_method_score'] = 0
 
-    main_groups_list = [
-        "trout", "bass", "perch", "catfish", "sunfish", "salmon", "carp", "sucker", "whitefish", "pike", "walleye", "crappie", "bluegill", "sturgeon", "shad", "bream", "pickerel", "muskellunge", "drum", "gar", "shiner", "chub", "dace", "minnow", "bullhead", "tilapia", "cod", "flounder", "halibut", "mackerel", "snapper", "grouper", "sheefish", "grayling", "smelt", "burbot", "rockfish", "sculpin", "stickleback", "perch", "shark", "ray", "eel", "lamprey"
+    main_groups_order = [
+        "bass", "catfish", "chub", "dace", "grayling", "perch", "sculpin", "shiner", "sucker", "trout", "walleye", "whitefish", "salmon", "steelhead"
     ]
     species_map = {}
     for spot in spots:
         for s in spot["species"]:
             if not s:
                 continue
-
             common_name = s.split('(')[0].strip()
             if not common_name:
                 continue
-            parts = common_name.split()
-
-            if len(parts) > 1 and parts[-1] in main_groups_list:
-                main_group = parts[-1]
-            elif parts[0] in main_groups_list:
-                main_group = parts[0]
+            name_lower = common_name.lower()
+            if "steelhead" in name_lower:
+                main_group = "steelhead"
+            elif "salmon" in name_lower and "trout" not in name_lower:
+                main_group = "salmon"
             else:
-                continue  
+                parts = common_name.split()
+                if len(parts) > 1 and parts[-1] in main_groups_order:
+                    main_group = parts[-1]
+                elif parts[0] in main_groups_order:
+                    main_group = parts[0]
+                else:
+                    continue
             if main_group not in species_map:
                 species_map[main_group] = set()
             species_map[main_group].add(common_name)
-    if not species_map:
-        print("No species data found in spots. Exiting.")
-        return
-
-    main_groups = sorted(species_map.keys())
     print("\nAvailable main fish groups:")
-    for idx, group in enumerate(main_groups, 1):
+    display_groups = [g for g in main_groups_order]
+    for idx, group in enumerate(display_groups, 1):
         print(f"  {idx}. {group.title()}")
 
     while True:
         try:
-            group_choice = int(input(f"\nEnter the number of the main group you want to target (1-{len(main_groups)}): ").strip())
-            if 1 <= group_choice <= len(main_groups):
-                main_group = main_groups[group_choice - 1]
+            group_choice = int(input(f"\nEnter the number of the main group you want to target (1-{len(display_groups)}): ").strip())
+            if 1 <= group_choice <= len(display_groups):
+                main_group = display_groups[group_choice - 1]
                 break
             else:
-                print(f"Please enter a number between 1 and {len(main_groups)}.")
+                print(f"Please enter a number between 1 and {len(display_groups)}.")
         except Exception:
             print("Invalid input. Please enter a valid number.")
-    subtypes = sorted(species_map[main_group])
-    if len(subtypes) == 1:
-        target_species = subtypes[0]
-        print(f"Selected: {target_species.title()}")
+    subtypes = sorted(species_map.get(main_group, []))
+    def is_illegal_species(name):
+        return "bull trout" in name.lower()
+
+    def needs_salmon_permit(name):
+        return "salmon" in name.lower()
+
+    def needs_steelhead_permit(name):
+        return "steelhead" in name.lower()
+
+    if main_group in ["salmon", "steelhead"]:
+        species_name = main_group
+        if not subtypes:
+            subtypes = [main_group]
+        if is_illegal_species(species_name):
+            print("\nFishing for Bull Trout is illegal and cannot be selected. Please choose another species.")
+            return
+        if needs_salmon_permit(species_name):
+            has_salmon = input("\nDo you have a salmon permit? (y/n): ").strip().lower() == 'y'
+            if not has_salmon:
+                print("You must have a salmon permit to fish for salmon. Please choose another species.")
+                return
+        if needs_steelhead_permit(species_name):
+            has_steelhead = input("\nDo you have a steelhead permit? (y/n): ").strip().lower() == 'y'
+            if not has_steelhead:
+                print("You must have a steelhead permit to fish for steelhead. Please choose another species.")
+                return
+        target_species = [species_name]
+        print(f"Selected: {species_name.title()}")
+    elif len(subtypes) == 1:
+        if is_illegal_species(subtypes[0]):
+            print("\nFishing for Bull Trout is illegal and cannot be selected. Please choose another species.")
+            return
+        if needs_salmon_permit(subtypes[0]):
+            has_salmon = input("\nDo you have a salmon permit? (y/n): ").strip().lower() == 'y'
+            if not has_salmon:
+                print("You must have a salmon permit to fish for salmon. Please choose another species.")
+                return
+        if needs_steelhead_permit(subtypes[0]):
+            has_steelhead = input("\nDo you have a steelhead permit? (y/n): ").strip().lower() == 'y'
+            if not has_steelhead:
+                print("You must have a steelhead permit to fish for steelhead. Please choose another species.")
+                return
+        target_species = [subtypes[0]]
+        print(f"Selected: {subtypes[0].title()}")
+    elif not subtypes:
+        print(f"\nNo sub-species found for {main_group.title()}. Please choose another group.")
+        return
     else:
         print(f"\nAvailable {main_group.title()} species:")
         for idx, subtype in enumerate(subtypes, 1):
-            print(f"  {idx}. {subtype.title()}")
+            label = subtype.title()
+            if is_illegal_species(subtype):
+                label += " (ILLEGAL TO FISH)"
+            print(f"  {idx}. {label}")
         while True:
             try:
-                sub_choice = int(input(f"\nEnter the number of the {main_group.title()} species you want to target (1-{len(subtypes)}): ").strip())
-                if 1 <= sub_choice <= len(subtypes):
-                    target_species = subtypes[sub_choice - 1]
+                sub_choices = input(f"\nEnter the number(s) of the {main_group.title()} species you want to target (comma separated, e.g. 1,3): ").strip()
+                selected_indices = [int(x) for x in sub_choices.split(',') if x.strip().isdigit() and 1 <= int(x.strip()) <= len(subtypes)]
+                if selected_indices:
+                    selected_species = [subtypes[i-1] for i in selected_indices]
+                    illegal_selected = [s for s in selected_species if is_illegal_species(s)]
+                    if illegal_selected:
+                        print(f"\nFishing for {', '.join(s.title() for s in illegal_selected)} is illegal and cannot be selected. Please choose only legal species.")
+                        continue
+                    salmon_needed = [s for s in selected_species if needs_salmon_permit(s)]
+                    steelhead_needed = [s for s in selected_species if needs_steelhead_permit(s)]
+                    if salmon_needed:
+                        has_salmon = input("\nYou selected salmon species. Do you have a salmon permit? (y/n): ").strip().lower() == 'y'
+                        if not has_salmon:
+                            print("You must have a salmon permit to fish for salmon. Please choose only species you are permitted to fish for.")
+                            continue
+                    if steelhead_needed:
+                        has_steelhead = input("\nYou selected steelhead species. Do you have a steelhead permit? (y/n): ").strip().lower() == 'y'
+                        if not has_steelhead:
+                            print("You must have a steelhead permit to fish for steelhead. Please choose only species you are permitted to fish for.")
+                            continue
+                    target_species = selected_species
                     break
                 else:
-                    print(f"Please enter a number between 1 and {len(subtypes)}.")
+                    print(f"Please enter at least one valid number between 1 and {len(subtypes)}.")
             except Exception:
-                print("Invalid input. Please enter a valid number.")
+                print("Invalid input. Please enter valid numbers separated by commas.")
 
     today = datetime.datetime.now().date()
     today_weekday = today.weekday()
@@ -473,7 +631,13 @@ def main():
     if start_day + trip_length > 7:
         print("Trip exceeds available forecast range. Adjusting trip length.")
         trip_length = 7 - start_day
-    show_top = input("Show the top 5 spots? (y/n): ").strip().lower() == 'y'
+    while True:
+        show_top_input = input("Show the top 5 spots? (y/n): ").strip().lower()
+        if show_top_input in ('y', 'n'):
+            show_top = show_top_input == 'y'
+            break
+        else:
+            print("Please enter 'y' for yes or 'n' for no.")
     end_day = start_day + trip_length - 1
     if show_top:
         scored_spots = []
@@ -503,15 +667,27 @@ def main():
             except Exception:
                 print("Invalid input. Please enter a valid number.")
 
-        bait_preference, gear_method = prompt_bait_and_gear_method(selected_methods)
+        bait_preference, gear_methods, two_pole = prompt_bait_and_gear_method(selected_methods)
         print(f"\nThe top place for fishing from day {start_day} to day {end_day} is: {best_spot['name']} (Avg Score: {best_avg_score:.2f})")
         print(f"Location: {best_spot['location']} | Lat: {best_spot['latitude']} | Lon: {best_spot['longitude']}")
         print(f"(Weather and gear recommendations are based on the first day of your trip.)")
         weather = get_weather_conditions(best_spot['latitude'], best_spot['longitude'], day_offset=start_day)
         if weather:
             print(f"Forecasted weather at {best_spot['name']} (Day {start_day}): {weather}")
-            gear = recommend_gear(best_spot, weather, target_species, gear_method, bait_preference)
-            print(f"Recommended gear: {', '.join(gear)}")
+            for gear_method in gear_methods:
+                if two_pole:
+                    rods_used = set()
+                    for pole_num, bait in enumerate(bait_preference, 1):
+                        recommend_gear.rods_used = rods_used
+                        gear = recommend_gear(best_spot, weather, target_species, gear_method, bait)
+                        print(f"Recommended gear for {gear_method.title()} (Pole {pole_num}, {bait.title()} Bait): {', '.join(gear)}")
+                        print(f"Top 3 lures/baits for Pole {pole_num} ({bait.title()}): {', '.join([g for g in gear if g not in ['shore rod holder', 'longer rod (7-9ft)', 'waders', 'wading boots', 'float tube', 'fins', 'life jacket', 'heavier line (12-15lb)', '8-10lb line', 'rain jacket']][:3])}")
+                    if hasattr(recommend_gear, 'rods_used'):
+                        del recommend_gear.rods_used
+                else:
+                    gear = recommend_gear(best_spot, weather, target_species, gear_method, bait_preference[0])
+                    print(f"Recommended gear for {gear_method.title()}: {', '.join(gear)}")
+                    print(f"Top 3 lures/baits: {', '.join([g for g in gear if g not in ['shore rod holder', 'longer rod (7-9ft)', 'waders', 'wading boots', 'float tube', 'fins', 'life jacket', 'heavier line (12-15lb)', '8-10lb line', 'rain jacket']][:3])}")
         return
  
     best_spot = None
@@ -524,7 +700,7 @@ def main():
             best_avg_score = avg_score
             best_spot = spot
 
-    bait_preference, gear_method = prompt_bait_and_gear_method(selected_methods)
+    bait_preference, gear_methods, two_pole = prompt_bait_and_gear_method(selected_methods)
 
     if best_spot:
         print(f"The top place for fishing from day {start_day} to day {end_day} is: {best_spot['name']} (Avg Score: {best_avg_score:.2f})")
@@ -533,8 +709,20 @@ def main():
         weather = get_weather_conditions(best_spot['latitude'], best_spot['longitude'], day_offset=start_day)
         if weather:
             print(f"Forecasted weather at {best_spot['name']} (Day {start_day}): {weather}")
-            gear = recommend_gear(best_spot, weather, target_species, gear_method, bait_preference)
-            print(f"Recommended gear: {', '.join(gear)}")
+            for gear_method in gear_methods:
+                if two_pole:
+                    rods_used = set()
+                    for pole_num, bait in enumerate(bait_preference, 1):
+                        recommend_gear.rods_used = rods_used
+                        gear = recommend_gear(best_spot, weather, target_species, gear_method, bait)
+                        print(f"Recommended gear for {gear_method.title()} (Pole {pole_num}, {bait.title()} Bait): {', '.join(gear)}")
+                        print(f"Top 3 lures/baits for Pole {pole_num} ({bait.title()}): {', '.join([g for g in gear if g not in ['shore rod holder', 'longer rod (7-9ft)', 'waders', 'wading boots', 'float tube', 'fins', 'life jacket', 'heavier line (12-15lb)', '8-10lb line', 'rain jacket']][:3])}")
+                    if hasattr(recommend_gear, 'rods_used'):
+                        del recommend_gear.rods_used
+                else:
+                    gear = recommend_gear(best_spot, weather, target_species, gear_method, bait_preference[0])
+                    print(f"Recommended gear for {gear_method.title()}: {', '.join(gear)}")
+                    print(f"Top 3 lures/baits: {', '.join([g for g in gear if g not in ['shore rod holder', 'longer rod (7-9ft)', 'waders', 'wading boots', 'float tube', 'fins', 'life jacket', 'heavier line (12-15lb)', '8-10lb line', 'rain jacket']][:3])}")
     else:
         print("No suitable fishing spot found for your criteria with live weather.")
 

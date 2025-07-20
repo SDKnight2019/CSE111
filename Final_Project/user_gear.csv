@@ -1,17 +1,15 @@
 type,name,details
-rod,medium-light,medium light rod (6'6")
-rod,medium-heavy,medium heavy rod (7')
+rod,medium,medium rod (6'6")
+rod,medium-heavy,medium-heavy rod (7')
 rod,ultralight,ultralight rod (5'6")
 rod,fly,fly rod (6wt)
-rod,light,ultralight rod (5'6")
-rod,medium,medium light rod (6'6")
-lure,spinners,spinners
-lure,spoons,spoons
+lure,spinner,spinner
+lure,spoon,spoon
 lure,soft plastic,soft plastics (worms, crawdads, etc.)
-lure,crankbait,crankbaits
-lure,chatterbait,chatterbaits
-lure,fly,flies
-lure,hook,hooks for live bait
+lure,crankbait,crankbait
+lure,chatterbait,chatterbait
+lure,fly,fly
+lure,hook,hook
 accessory,shore rod holder,for shore fishing
 accessory,longer rod (7-9ft),for still water shore fishing
 accessory,waders,for wading
