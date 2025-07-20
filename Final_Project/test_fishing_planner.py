@@ -60,6 +60,15 @@ def test_average_spot_score():
     print("test_average_spot_score passed.")
 
 def test_recommend_gear():
+    recommend_gear.user_gear = {
+        "rod": {"fly": "fly rod", "ultralight": "ultralight rod", "medium": "medium rod", "medium-heavy": "medium-heavy rod"},
+        "lure": {"fly": "fly", "spinner": "spinner", "spoon": "spoon", "chatterbait": "chatterbait", "soft plastic": "soft plastic", "crankbait": "crankbait", "hook": "hook"},
+        "accessory": {"waders": "waders", "wading boots": "wading boots", "float tube": "float tube", "fins": "fins", "life jacket": "life jacket", "shore rod holder": "shore rod holder"}
+    }
+    recommend_gear.user_gear_names = set([
+        "fly rod", "ultralight rod", "medium rod", "medium-heavy rod", "fly", "spinner", "spoon", "chatterbait", "soft plastic", "crankbait", "hook",
+        "waders", "wading boots", "float tube", "fins", "life jacket", "shore rod holder"
+    ])
     gear = recommend_gear(mock_spot, mock_weather, "trout", fishing_method="wading", bait_preference="moving")
     assert any("fly" in g or "rod" in g for g in gear)
     spot2 = dict(mock_spot)
