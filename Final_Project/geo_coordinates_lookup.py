@@ -9,9 +9,8 @@ def add_coordinates(df):
     geolocator = Nominatim(user_agent="fishing_planner")
     geocode = RateLimiter(geolocator.geocode, min_delay_seconds=1)
 
-    # helper to geocode one name
+
     def lookup(name):
-        # include “Idaho, USA” to narrow the search
         loc = geocode(f"{name}, Idaho, USA")
         if loc:
             return pd.Series([loc.latitude, loc.longitude])
@@ -23,13 +22,10 @@ def add_coordinates(df):
     return pd.concat([df, coords], axis=1)
 
 if __name__ == "__main__":
-    # 1. Load your water-bodies list
-    df = pd.read_csv('waters_list.csv')  # must be in the same folder
+    df = pd.read_csv('waters_list.csv')
 
-    # 2. Geocode and append lat/lon
     df_with_coords = add_coordinates(df)
 
-    # 3. Save out the new CSV
     df_with_coords.to_csv('waters_with_coords.csv', index=False)
 
     print("Saved waters_with_coords.csv with the following head:")

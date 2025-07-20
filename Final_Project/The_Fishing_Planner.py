@@ -1,14 +1,8 @@
-"""
-The Fishing Planner
--------------------
-A command-line tool to help plan fishing trips by recommending the best spots and gear based on:
-- User's available gear (from user_gear.csv)
-- Fishing spots and species (from waters_with_coords.csv)
-- Live weather data (from the National Weather Service API)
-- User preferences (fishing method, target species, bait type)
+import math
+import datetime
+import csv
+import requests
 
-Usage: Run the script and follow the prompts. Requires internet access for live weather.
-"""
 USER_GEAR_CSV = "/home/sdknight2019/Public/Developer/CSE111/Final_Project/user_gear.csv"
 def load_user_gear(filename):
     """Load user's available gear from a CSV file. Returns a dict by type and a flat set of names."""
@@ -59,10 +53,6 @@ def prompt_bait_and_gear_method(selected_methods):
     else:
         gear_method = selected_methods[0]
     return bait_preference, gear_method
-import math
-import datetime
-import csv
-import requests
 
 def load_fishing_spots(filename):
     """Load fishing spots from a CSV file."""
@@ -122,11 +112,9 @@ def get_weather_conditions(lat=None, lon=None, day_offset=0):
 def score_conditions(spot, weather, target_species):
     """Score a fishing spot based on weather, target species, and fishing method, out of 110 points."""
     score = 0
-    # Species match: up to 40 points
     if any(target_species in s for s in spot["species"]):
         score += 40
 
-    # Temperature: up to 30 points
     temp = weather["temperature"]
     if 65 <= temp <= 70:
         score += 30
@@ -137,7 +125,6 @@ def score_conditions(spot, weather, target_species):
     elif 50 <= temp <= 54 or 81 <= temp <= 85:
         score += 5
 
-    # Cloud cover: up to 10 points
     cloud = weather["cloud_cover"]
     if "partly cloudy" in cloud:
         score += 10
@@ -148,7 +135,6 @@ def score_conditions(spot, weather, target_species):
     elif "rain" in cloud or "showers" in cloud:
         score += 2
 
-    # Wind: up to 10 points (lower wind is better)
     wind_str = weather.get("wind", "0 mph")
     try:
         wind_val = int(wind_str.split()[0])
@@ -163,19 +149,16 @@ def score_conditions(spot, weather, target_species):
     elif wind_val <= 20:
         score += 2
 
-    # Precipitation: up to 10 points (if mentioned in cloud_cover)
     if "rain" in cloud or "showers" in cloud:
-        score += 2  # already added above, so no extra
+        score += 2  
     elif "snow" in cloud:
         score += 1
 
-    # Fishing method compatibility: up to 10 points
     if hasattr(spot, 'fishing_method_score'):
         score += spot.fishing_method_score
     elif 'fishing_method_score' in spot:
         score += spot['fishing_method_score']
 
-    # Cap score at 110 (or 100 if you want to keep old max)
     return min(score, 110)
 
 def recommend_gear(spot, weather, target_species, fishing_method=None, bait_preference=None):
@@ -189,7 +172,6 @@ def recommend_gear(spot, weather, target_species, fishing_method=None, bait_pref
         wind_val = 0
     location = (spot.get("location") or "") + " " + (spot.get("name") or "")
     location = location.lower()
-    # Determine water type
     if any(w in location for w in ["lake", "reservoir", "pond"]):
         water_type = "still"
     elif any(w in location for w in ["river", "stream", "creek"]):
@@ -198,7 +180,6 @@ def recommend_gear(spot, weather, target_species, fishing_method=None, bait_pref
         water_type = "unknown"
 
     gear = []
-    # Add method-specific gear
     if fishing_method == "shore":
         gear.append("shore rod holder")
         if water_type == "still":
@@ -211,7 +192,6 @@ def recommend_gear(spot, weather, target_species, fishing_method=None, bait_pref
         gear.append("fins")
         gear.append("life jacket")
 
-    # user_gear and user_gear_names must be passed as attributes on the function
     user_gear = recommend_gear.user_gear
     user_gear_names = recommend_gear.user_gear_names
 
@@ -235,7 +215,6 @@ def recommend_gear(spot, weather, target_species, fishing_method=None, bait_pref
         else:
             print(f"[Warning] You do not have '{rod_type}' rod in your gear list.")
 
-    # Bass
     if "bass" in target_species:
         if water_type == "still":
             add_rod("medium-heavy")
@@ -257,7 +236,6 @@ def recommend_gear(spot, weather, target_species, fishing_method=None, bait_pref
             add_gear("crankbait")
         elif bait_preference == "still":
             add_gear("soft plastic")
-    # Trout
     elif "trout" in target_species:
         if water_type == "moving":
             add_rod("fly")
@@ -280,7 +258,6 @@ def recommend_gear(spot, weather, target_species, fishing_method=None, bait_pref
             add_gear("spinner")
         elif bait_preference == "still":
             add_gear("hook")
-    # Walleye
     elif "walleye" in target_species:
         add_rod("medium")
         if water_type == "still":
@@ -293,7 +270,6 @@ def recommend_gear(spot, weather, target_species, fishing_method=None, bait_pref
             add_gear("crankbait")
         elif bait_preference == "still":
             add_gear("hook")
-    # Catfish
     elif "catfish" in target_species:
         add_rod("medium-heavy")
         gear.append("circle hooks")
@@ -304,7 +280,6 @@ def recommend_gear(spot, weather, target_species, fishing_method=None, bait_pref
             gear.append("drifting rig")
         elif bait_preference == "still":
             gear.append("slip sinker rig")
-    # Pike
     elif "pike" in target_species:
         add_rod("medium-heavy")
         gear.append("steel leader")
@@ -313,7 +288,6 @@ def recommend_gear(spot, weather, target_species, fishing_method=None, bait_pref
             add_gear("spinner")
         elif bait_preference == "still":
             add_gear("soft plastic")
-    # Default
     else:
         if water_type == "still":
             add_rod("medium")
@@ -328,7 +302,6 @@ def recommend_gear(spot, weather, target_species, fishing_method=None, bait_pref
             add_gear("spinner")
         elif bait_preference == "still":
             add_gear("hook")
-    # Add rain gear if needed
     if "rain" in cloud or "showers" in cloud:
         gear.append("rain jacket")
     return gear
@@ -346,19 +319,15 @@ def average_spot_score(spot, target_species, start_day, trip_length):
         return None
     return total_score / valid_days
 
-# Helper to determine if a fishing method is possible at a spot
 def fishing_method_possible(spot, fishing_method):
     """Return True if the fishing method is likely possible at the spot, based on keywords."""
     location = (spot.get("location") or "") + " " + (spot.get("name") or "")
     location = location.lower()
     if fishing_method == "shore":
-        # Assume shore fishing is possible at most places
         return True
     elif fishing_method == "wading":
-        # Look for river, stream, creek, shallow, wade, access
         return any(w in location for w in ["river", "stream", "creek", "shallow", "wade", "access"])
     elif fishing_method == "float tube":
-        # Look for lake, pond, reservoir, float tube, launch
         return any(w in location for w in ["lake", "pond", "reservoir", "float tube", "launch"])
     return False
 
@@ -377,16 +346,15 @@ def get_weekday_offset(target_weekday):
 def main():
     print("Welcome to The Fishing Planner!")
     spots = load_fishing_spots("/home/sdknight2019/Public/Developer/CSE111/Final_Project/waters_with_coords.csv")
-    # Load user gear once
     user_gear, user_gear_names = load_user_gear(USER_GEAR_CSV)
-    # Attach to recommend_gear for use in recommendations
     recommend_gear.user_gear = user_gear
     recommend_gear.user_gear_names = user_gear_names
     if not spots:
         print("No fishing spots available. Exiting.")
         return
+    if not any(user_gear.values()) or not user_gear_names:
+        print("Warning: Your gear list is empty. Gear recommendations will be limited or unavailable.")
 
-    # Ask for fishing method first
     print("\nHow would you like to fish? (You can select multiple methods, e.g. 1,2)")
     fishing_methods = ["shore", "wading", "float tube"]
     for idx, method in enumerate(fishing_methods, 1):
@@ -403,15 +371,12 @@ def main():
         except Exception:
             print("Invalid input. Please enter valid numbers separated by commas.")
 
-    # Add fishing method compatibility score to each spot (score if any selected method is possible)
     for spot in spots:
         if any(fishing_method_possible(spot, m) for m in selected_methods):
             spot['fishing_method_score'] = 10
         else:
             spot['fishing_method_score'] = 0
 
-    # ...existing code for species selection...
-    # Group species by main group (e.g., 'trout') and allow user to select a main group, then a subspecies
     main_groups_list = [
         "trout", "bass", "perch", "catfish", "sunfish", "salmon", "carp", "sucker", "whitefish", "pike", "walleye", "crappie", "bluegill", "sturgeon", "shad", "bream", "pickerel", "muskellunge", "drum", "gar", "shiner", "chub", "dace", "minnow", "bullhead", "tilapia", "cod", "flounder", "halibut", "mackerel", "snapper", "grouper", "sheefish", "grayling", "smelt", "burbot", "rockfish", "sculpin", "stickleback", "perch", "shark", "ray", "eel", "lamprey"
     ]
@@ -420,18 +385,18 @@ def main():
         for s in spot["species"]:
             if not s:
                 continue
-            # Only take the part before any '(' 
+
             common_name = s.split('(')[0].strip()
             if not common_name:
                 continue
             parts = common_name.split()
-            # Find main group by matching last word to main_groups_list
+
             if len(parts) > 1 and parts[-1] in main_groups_list:
                 main_group = parts[-1]
             elif parts[0] in main_groups_list:
                 main_group = parts[0]
             else:
-                continue  # skip if not a recognized group
+                continue  
             if main_group not in species_map:
                 species_map[main_group] = set()
             species_map[main_group].add(common_name)
@@ -443,7 +408,7 @@ def main():
     print("\nAvailable main fish groups:")
     for idx, group in enumerate(main_groups, 1):
         print(f"  {idx}. {group.title()}")
-    # User selects main group
+
     while True:
         try:
             group_choice = int(input(f"\nEnter the number of the main group you want to target (1-{len(main_groups)}): ").strip())
@@ -472,7 +437,7 @@ def main():
                     print(f"Please enter a number between 1 and {len(subtypes)}.")
             except Exception:
                 print("Invalid input. Please enter a valid number.")
-    # Number days of week by offset from today
+
     today = datetime.datetime.now().date()
     today_weekday = today.weekday()
     days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -525,7 +490,7 @@ def main():
         if not scored_spots:
             print("No suitable fishing spots found for your criteria with live weather.")
             return
-        # Prompt user to select a spot for detailed recommendation
+
         while True:
             try:
                 spot_choice = int(input(f"\nEnter the number of the spot you want details for (1-{min(5, len(scored_spots))}): ").strip())
@@ -537,8 +502,7 @@ def main():
                     print(f"Please enter a number between 1 and {min(5, len(scored_spots))}.")
             except Exception:
                 print("Invalid input. Please enter a valid number.")
-        # Continue to ask bait preference, then show weather and gear
-        # Ask bait and gear method using helper
+
         bait_preference, gear_method = prompt_bait_and_gear_method(selected_methods)
         print(f"\nThe top place for fishing from day {start_day} to day {end_day} is: {best_spot['name']} (Avg Score: {best_avg_score:.2f})")
         print(f"Location: {best_spot['location']} | Lat: {best_spot['latitude']} | Lon: {best_spot['longitude']}")
@@ -549,7 +513,7 @@ def main():
             gear = recommend_gear(best_spot, weather, target_species, gear_method, bait_preference)
             print(f"Recommended gear: {', '.join(gear)}")
         return
-    # Non-top-5 mode
+ 
     best_spot = None
     best_avg_score = -math.inf
     for spot in spots:
@@ -560,8 +524,6 @@ def main():
             best_avg_score = avg_score
             best_spot = spot
 
-    # Ask for bait preference
-    # Ask bait and gear method using helper
     bait_preference, gear_method = prompt_bait_and_gear_method(selected_methods)
 
     if best_spot:
@@ -577,4 +539,8 @@ def main():
         print("No suitable fishing spot found for your criteria with live weather.")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print("\nAn unexpected error occurred. Please check your input files and try again.")
+        print(f"Error details: {e}")

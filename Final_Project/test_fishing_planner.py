@@ -4,7 +4,10 @@ from The_Fishing_Planner import (
     load_fishing_spots,
     score_conditions,
     average_spot_score,
-    recommend_gear
+    recommend_gear,
+    fishing_method_possible,
+    get_weekday_offset,
+    prompt_bait_and_gear_method
 )
 
 mock_weather = {
@@ -24,18 +27,29 @@ mock_spot = {
 def test_load_fishing_spots():
     csv_content = """name,location_desc,lat,lon,species
 Test Lake,Test County,44.0,-111.0,Rainbow Trout;Bass
+Test River,Test Valley,45.0,-112.0,Trout;Catfish
 """
     with open("test_spots.csv", "w") as f:
         f.write(csv_content)
     spots = load_fishing_spots("test_spots.csv")
-    assert len(spots) == 1
+    assert len(spots) == 2
     assert spots[0]["name"] == "Test Lake"
     assert "rainbow trout" in spots[0]["species"]
+    assert spots[1]["name"] == "Test River"
+    assert "catfish" in spots[1]["species"]
     print("test_load_fishing_spots passed.")
 
 def test_score_conditions():
     score = score_conditions(mock_spot, mock_weather, "trout")
-    assert score >= 10  
+    assert score >= 10
+    spot2 = dict(mock_spot)
+    spot2["species"] = ["walleye"]
+    score2 = score_conditions(spot2, mock_weather, "trout")
+    assert score2 < score
+    weather2 = dict(mock_weather)
+    weather2["wind"] = "30 mph"
+    score3 = score_conditions(mock_spot, weather2, "trout")
+    assert score3 < score
     print("test_score_conditions passed.")
 
 def test_average_spot_score():
@@ -46,13 +60,49 @@ def test_average_spot_score():
     print("test_average_spot_score passed.")
 
 def test_recommend_gear():
-    gear = recommend_gear(mock_spot, mock_weather, "trout")
-    assert "fly rod" in gear
+    gear = recommend_gear(mock_spot, mock_weather, "trout", fishing_method="wading", bait_preference="moving")
+    assert any("fly" in g or "rod" in g for g in gear)
+    spot2 = dict(mock_spot)
+    spot2["species"] = ["bass"]
+    spot2["location"] = "Test Lake"
+    weather2 = dict(mock_weather)
+    weather2["temperature"] = 80
+    gear2 = recommend_gear(spot2, weather2, "bass", fishing_method="shore", bait_preference="still")
+    assert any("rod" in g for g in gear2)
+    spot3 = dict(mock_spot)
+    spot3["species"] = ["catfish"]
+    spot3["location"] = "Test River"
+    gear3 = recommend_gear(spot3, mock_weather, "catfish", fishing_method="wading", bait_preference="still")
+    assert any("hook" in g for g in gear3)
     print("test_recommend_gear passed.")
+
+def test_fishing_method_possible():
+    spot = {"name": "Lakeview", "location": "Big Lake"}
+    assert fishing_method_possible(spot, "shore")
+    assert not fishing_method_possible(spot, "wading")
+    assert fishing_method_possible(spot, "float tube")
+    spot2 = {"name": "Creekside", "location": "Shallow Creek"}
+    assert fishing_method_possible(spot2, "wading")
+    print("test_fishing_method_possible passed.")
+
+def test_get_weekday_offset():
+    import datetime
+    today = datetime.datetime.now().date()
+    today_name = today.strftime("%A").lower()
+    assert get_weekday_offset(today_name) == 0
+    assert 0 <= get_weekday_offset("sunday") <= 6
+    print("test_get_weekday_offset passed.")
+
+def test_prompt_bait_and_gear_method():
+    assert callable(prompt_bait_and_gear_method)
+    print("test_prompt_bait_and_gear_method exists.")
 
 if __name__ == "__main__":
     test_load_fishing_spots()
     test_score_conditions()
     test_average_spot_score()
     test_recommend_gear()
+    test_fishing_method_possible()
+    test_get_weekday_offset()
+    test_prompt_bait_and_gear_method()
     print("All tests passed.")
